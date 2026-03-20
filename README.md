@@ -18,7 +18,7 @@ Universal Windows audit scripts for MSP use. Run via ScreenConnect Toolbox as SY
 #timeout=600000
 Set-ExecutionPolicy Bypass -Scope Process -Force
 New-Item -Path C:\Temp -ItemType Directory -Force | Out-Null
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Howweird/msp-audit-scripts/main/server_audit.ps1" -OutFile "C:\Temp\server_audit.ps1" -UseBasicParsing
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Howweird/msp-audit-scripts/master/server_audit.ps1" -OutFile "C:\Temp\server_audit.ps1" -UseBasicParsing
 . C:\Temp\server_audit.ps1
 ```
 
@@ -29,7 +29,7 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Howweird/msp-audit-scr
 #timeout=600000
 Set-ExecutionPolicy Bypass -Scope Process -Force
 New-Item -Path C:\Temp -ItemType Directory -Force | Out-Null
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Howweird/msp-audit-scripts/main/workstation_audit.ps1" -OutFile "C:\Temp\workstation_audit.ps1" -UseBasicParsing
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Howweird/msp-audit-scripts/master/workstation_audit.ps1" -OutFile "C:\Temp\workstation_audit.ps1" -UseBasicParsing
 . C:\Temp\workstation_audit.ps1
 ```
 
