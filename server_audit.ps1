@@ -1,7 +1,7 @@
 # ==========================================
 # UNIVERSAL WINDOWS SERVER AUDIT SCRIPT
 # Works on Windows Server 2012 -> 2025
-# Outputs: .txt transcript + .json for AI processing
+# Outputs: HOSTNAME_server_audit_DATE.json to C:\Temp
 # ==========================================
 
 # Auto-relaunch with ExecutionPolicy Bypass if needed

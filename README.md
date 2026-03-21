@@ -6,8 +6,8 @@ Universal Windows audit scripts for MSP use. Run via ScreenConnect Toolbox as SY
 
 | Script | Target | Output |
 |--------|--------|--------|
-| `server_audit.ps1` | Windows Server 2012-2025 | `C:\Temp\server_audit_YYYY-MM-DD.txt` + `.json` |
-| `workstation_audit.ps1` | Windows 10/11 | `C:\Temp\workstation_audit_YYYY-MM-DD.txt` + `.json` |
+| `server_audit.ps1` | Windows Server 2012-2025 | `C:\Temp\HOSTNAME_server_audit_YYYY-MM-DD.json` |
+| `workstation_audit.ps1` | Windows 10/11 | `C:\Temp\HOSTNAME_workstation_audit_YYYY-MM-DD.json` |
 
 ## ScreenConnect Toolbox Commands
 
@@ -18,7 +18,8 @@ Universal Windows audit scripts for MSP use. Run via ScreenConnect Toolbox as SY
 #timeout=600000
 Set-ExecutionPolicy Bypass -Scope Process -Force
 New-Item -Path C:\Temp -ItemType Directory -Force | Out-Null
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Howweird/msp-audit-scripts/master/server_audit.ps1" -OutFile "C:\Temp\server_audit.ps1" -UseBasicParsing
+$u = "https://raw.githubusercontent.com/Howweird/msp-audit-scripts/master/server_audit.ps1"
+Invoke-WebRequest -Uri $u -OutFile "C:\Temp\server_audit.ps1" -UseBasicParsing
 . C:\Temp\server_audit.ps1
 ```
 
@@ -29,7 +30,8 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Howweird/msp-audit-scr
 #timeout=600000
 Set-ExecutionPolicy Bypass -Scope Process -Force
 New-Item -Path C:\Temp -ItemType Directory -Force | Out-Null
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Howweird/msp-audit-scripts/master/workstation_audit.ps1" -OutFile "C:\Temp\workstation_audit.ps1" -UseBasicParsing
+$u = "https://raw.githubusercontent.com/Howweird/msp-audit-scripts/master/workstation_audit.ps1"
+Invoke-WebRequest -Uri $u -OutFile "C:\Temp\workstation_audit.ps1" -UseBasicParsing
 . C:\Temp\workstation_audit.ps1
 ```
 
@@ -41,5 +43,4 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Howweird/msp-audit-scr
 
 ## Output
 
-- `.txt` — Full transcript (human-readable)
-- `.json` — Structured data for AI/automated processing
+- `.json` — Structured data with hostname in filename for multi-machine audits

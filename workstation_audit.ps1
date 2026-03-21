@@ -1,7 +1,7 @@
 # ==========================================
 # UNIVERSAL WORKSTATION AUDIT SCRIPT
 # Works on Windows 10 / 11 (domain or workgroup)
-# Outputs: .txt transcript + .json for AI processing
+# Outputs: HOSTNAME_workstation_audit_DATE.json to C:\Temp
 # ==========================================
 
 # Auto-relaunch with ExecutionPolicy Bypass if needed
