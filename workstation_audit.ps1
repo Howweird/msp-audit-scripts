@@ -22,7 +22,8 @@ if (-not $isAdmin) {
 
 $Date = Get-Date -Format 'yyyy-MM-dd'
 $OutputDir = "C:\Temp"
-$JsonFile = "$OutputDir\workstation_audit_$Date.json"
+$Name = $env:COMPUTERNAME
+$JsonFile = "$OutputDir\${Name}_workstation_audit_$Date.json"
 
 if (!(Test-Path $OutputDir)) { New-Item -ItemType Directory -Path $OutputDir | Out-Null }
 
