@@ -22,13 +22,9 @@ if (-not $isAdmin) {
 
 $Date = Get-Date -Format 'yyyy-MM-dd'
 $OutputDir = "C:\Temp"
-$TxtFile = "$OutputDir\workstation_audit_$Date.txt"
 $JsonFile = "$OutputDir\workstation_audit_$Date.json"
 
 if (!(Test-Path $OutputDir)) { New-Item -ItemType Directory -Path $OutputDir | Out-Null }
-
-$FormatEnumerationLimit = -1
-try { $Host.UI.RawUI.BufferSize = New-Object System.Management.Automation.Host.Size(500, 50000) } catch {}
 
 # Structured data collector
 $audit = [ordered]@{
@@ -41,8 +37,6 @@ $audit = [ordered]@{
     }
     _errors = @()
 }
-
-Start-Transcript -Path $TxtFile -Force
 
 Write-Host "======================================="
 Write-Host "    UNIVERSAL WORKSTATION AUDIT v1.0"
@@ -1156,11 +1150,8 @@ if ($errorCount -gt 0) {
     Write-Host "All sections completed successfully" -ForegroundColor Green
 }
 
-Write-Host "Transcript: $TxtFile"
-Write-Host "JSON data:  $JsonFile"
+Write-Host "JSON data: $JsonFile"
 Write-Host "======================================="
-
-Stop-Transcript
 
 # Save JSON
 $audit | ConvertTo-Json -Depth 10 | Out-File $JsonFile -Encoding UTF8
