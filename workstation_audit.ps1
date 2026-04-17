@@ -1,18 +1,21 @@
 # ============================================================
 # UNIVERSAL WORKSTATION AUDIT SCRIPT
 #
-# Script Version : 2.0.0
+# Script Version : 2.0.2
 # Schema Version : 2.0      (output JSON shape; bump on breaking changes)
 # Build Date     : 2026-04-17
 # Sections       : 49       (originals 1-33; security/diag additions 34-49)
 # Compatibility  : Windows 10 21H2 -> Windows 11 25H2 (admin required)
 #
 # Outputs        : C:\Temp\<HOSTNAME>_workstation_audit_<DATE>.json
-#                  (UTF-8, ConvertTo-Json depth 10)
+#                  (UTF-8, ConvertTo-Json depth 8, .NET WriteAllText)
 #
 # Each top-level JSON key is one of: _metadata, _errors, then one
 # property per section in execution order. Section names are stable;
 # never rename without bumping Schema Version.
+#
+# Authoritative version is $ScriptVersion below; this comment is
+# documentation only. CI/runtime reads $ScriptVersion + $ScriptSchemaVersion.
 # ============================================================
 
 $ScriptVersion       = "2.0.2"
