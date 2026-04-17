@@ -15,7 +15,7 @@
 # never rename without bumping Schema Version.
 # ============================================================
 
-$ScriptVersion       = "2.0.0"
+$ScriptVersion       = "2.0.2"
 $ScriptSchemaVersion = "2.0"
 $ScriptBuildDate     = "2026-04-17"
 
@@ -1322,10 +1322,10 @@ try {
                 NISEngineVersion = "$($mp.NISEngineVersion)"
                 AntispywareSignatureLastUpdated = if ($mp.AntispywareSignatureLastUpdated) { $mp.AntispywareSignatureLastUpdated.ToString("yyyy-MM-dd HH:mm:ss") } else { $null }
                 AntivirusSignatureLastUpdated = if ($mp.AntivirusSignatureLastUpdated) { $mp.AntivirusSignatureLastUpdated.ToString("yyyy-MM-dd HH:mm:ss") } else { $null }
-                AntivirusSignatureAgeDays = $mp.AntivirusSignatureAge
-                NISSignatureAgeDays = $mp.NISSignatureAge
-                FullScanAgeDays = $mp.FullScanAge
-                QuickScanAgeDays = $mp.QuickScanAge
+                AntivirusSignatureAgeDays = if ($mp.AntivirusSignatureAge -eq 4294967295) { $null } else { $mp.AntivirusSignatureAge }
+                NISSignatureAgeDays = if ($mp.NISSignatureAge -eq 4294967295) { $null } else { $mp.NISSignatureAge }
+                FullScanAgeDays = if ($mp.FullScanAge -eq 4294967295) { $null } else { $mp.FullScanAge }
+                QuickScanAgeDays = if ($mp.QuickScanAge -eq 4294967295) { $null } else { $mp.QuickScanAge }
                 FullScanEndTime = if ($mp.FullScanEndTime) { $mp.FullScanEndTime.ToString("yyyy-MM-dd HH:mm:ss") } else { $null }
                 QuickScanEndTime = if ($mp.QuickScanEndTime) { $mp.QuickScanEndTime.ToString("yyyy-MM-dd HH:mm:ss") } else { $null }
                 IsTamperProtected = if ($mp.PSObject.Properties.Match('IsTamperProtected').Count) { [bool]$mp.IsTamperProtected } else { $null }
@@ -1448,6 +1448,12 @@ try {
     }
     if ($def.Status.QuickScanAgeDays -ne $null -and $def.Status.QuickScanAgeDays -gt 14) {
         $audit.SecuritySummary += "Defender quick scan stale ($($def.Status.QuickScanAgeDays)d)"
+    }
+    if ($def.Status.QuickScanAgeDays -eq $null) {
+        $audit.SecuritySummary += "Defender quick scan has never run"
+    }
+    if ($def.Status.FullScanAgeDays -eq $null) {
+        $audit.SecuritySummary += "Defender full scan has never run"
     }
     if ($def.ControlledFolderAccess.EnableControlledFolderAccess -eq "0") {
         $audit.SecuritySummary += "Controlled Folder Access (anti-ransomware) disabled"
@@ -1614,6 +1620,13 @@ Write-Host "=== 38. SERVICES INVENTORY ===" -ForegroundColor Cyan
 try {
     $allSvc = @(Get-CimInstance -ClassName Win32_Service -ErrorAction SilentlyContinue)
     $suspSvc = @()
+    # Allowlist for known-good Microsoft / vendor paths under ProgramData (auto-updating engines etc.)
+    $svcAllowlistPatterns = @(
+        '(?i)^[A-Z]:\\ProgramData\\Microsoft\\Windows Defender\\Platform\\',
+        '(?i)^[A-Z]:\\ProgramData\\Microsoft\\Windows Defender\\Definition Updates\\',
+        '(?i)^[A-Z]:\\ProgramData\\Package Cache\\',
+        '(?i)^[A-Z]:\\ProgramData\\Microsoft\\Click[Tt]o[Rr]un\\'
+    )
     foreach ($s in $allSvc) {
         $reasons = @()
         $path = "$($s.PathName)"
@@ -1623,16 +1636,20 @@ try {
         elseif ($path -match '^(\S+\.exe)') { $exe = $matches[1] }
         else { $exe = ($path -split '\s')[0] }
 
+        # Check against allowlist
+        $isAllowed = $false
+        foreach ($pat in $svcAllowlistPatterns) { if ($exe -match $pat) { $isAllowed = $true; break } }
+
         # Path with spaces but not quoted (privilege-escalation classic)
         if ($path -and $path -notmatch '^"' -and $path -match '\s' -and $path -match '^([A-Z]:\\[^"]+\s+[^"]+\.exe)') {
             $reasons += "Unquoted path with spaces"
         }
-        # Binary in user-writable dir
-        if ($exe -match '(?i)\\(users|programdata|temp|public|appdata)\\') {
+        # Binary in user-writable dir (skip if allowlisted)
+        if (-not $isAllowed -and $exe -match '(?i)\\(users|programdata|temp|public|appdata)\\') {
             $reasons += "Binary in user-writable directory: $exe"
         }
-        # Not in standard system paths
-        if ($exe -and $exe -notmatch '(?i)^[A-Z]:\\(Windows|Program Files|Program Files \(x86\))') {
+        # Not in standard system paths (skip if allowlisted)
+        if (-not $isAllowed -and $exe -and $exe -notmatch '(?i)^[A-Z]:\\(Windows|Program Files|Program Files \(x86\))') {
             if ($exe -notmatch '(?i)^[A-Z]:\\Users') {
                 $reasons += "Binary outside standard system paths: $exe"
             }
@@ -1952,11 +1969,12 @@ try {
         $net.EstablishedOutbound = $established
     } catch { $net.EstablishedOutboundError = $_.Exception.Message; $net.EstablishedOutbound = @() }
 
-    # HOSTS file
+    # HOSTS file (read via .NET to avoid PSObject metadata baggage in Get-Content output;
+    # Get-Content lines carry PSDrive/Provider reflection refs that ConvertTo-Json explodes into 40+ MB)
     try {
         $hostsPath = "$env:windir\System32\drivers\etc\hosts"
-        $hostsContent = Get-Content $hostsPath -ErrorAction SilentlyContinue
-        $hostsActive = @($hostsContent | Where-Object { $_ -and ($_ -notmatch '^\s*#') -and ($_.Trim() -ne '') })
+        $hostsLines = if (Test-Path $hostsPath) { [System.IO.File]::ReadAllLines($hostsPath) } else { @() }
+        $hostsActive = @($hostsLines | Where-Object { $_ -and ($_ -notmatch '^\s*#') -and ($_.Trim() -ne '') } | ForEach-Object { [string]$_ })
         $net.HostsFile = [ordered]@{
             ActiveEntryCount = $hostsActive.Count
             ActiveEntries = $hostsActive
@@ -2774,21 +2792,61 @@ try {
 
 # =====================================================
 # DONE - SAVE JSON
+# (Banner moved to AFTER save so completion message reflects truth.
+#  ConvertTo-Json on PS 5.1 is slow on multi-MB hashtables; we time it,
+#  use [IO.File]::WriteAllText for fast write, and provide a per-section
+#  fallback if the monolithic serialize fails.)
 # =====================================================
 Write-Host ""
-Write-Host "======================================="
-Write-Host "    WORKSTATION AUDIT COMPLETE"
-Write-Host "======================================="
+Write-Host "[INFO] All section data collected. Serializing to JSON (can take 30-90s on large profiles)..." -ForegroundColor Cyan
+$saveStart = Get-Date
+$saveOk = $false
+$saveErr = ""
+try {
+    $jsonText = $audit | ConvertTo-Json -Depth 8 -ErrorAction Stop
+    [System.IO.File]::WriteAllText($JsonFile, $jsonText, [System.Text.UTF8Encoding]::new($false))
+    $saveOk = $true
+    $saveDuration = ((Get-Date) - $saveStart).TotalSeconds
+    $jsonSizeKB = [math]::Round((Get-Item $JsonFile).Length / 1KB, 1)
+    Write-Host "[OK] JSON written: $JsonFile ($jsonSizeKB KB in $([math]::Round($saveDuration,1))s)" -ForegroundColor Green
+} catch {
+    $saveErr = $_.Exception.Message
+    Write-Host "[ERROR] Monolithic JSON serialize/write failed: $saveErr" -ForegroundColor Red
+    Write-Host "[INFO] Attempting per-section fallback export..." -ForegroundColor Yellow
+    try {
+        $fallbackDir = ($JsonFile -replace '\.json$','') + "_partial"
+        New-Item -ItemType Directory -Path $fallbackDir -Force | Out-Null
+        $secOk = 0; $secFail = 0
+        foreach ($k in @($audit.Keys)) {
+            $partPath = Join-Path $fallbackDir "$k.json"
+            try {
+                $partText = $audit[$k] | ConvertTo-Json -Depth 8 -ErrorAction Stop
+                [System.IO.File]::WriteAllText($partPath, $partText, [System.Text.UTF8Encoding]::new($false))
+                $secOk++
+            } catch {
+                [System.IO.File]::WriteAllText((Join-Path $fallbackDir "$k.ERROR.txt"), "Failed: $($_.Exception.Message)", [System.Text.UTF8Encoding]::new($false))
+                $secFail++
+            }
+        }
+        Write-Host "[OK] Fallback complete: $secOk sections saved, $secFail failed. Folder: $fallbackDir" -ForegroundColor Yellow
+    } catch {
+        Write-Host "[ERROR] Per-section fallback also failed: $($_.Exception.Message)" -ForegroundColor Red
+    }
+}
 
+Write-Host ""
+Write-Host "======================================="
+if ($saveOk) {
+    Write-Host "    WORKSTATION AUDIT COMPLETE"
+} else {
+    Write-Host "    WORKSTATION AUDIT FINISHED (SAVE ISSUE)"
+}
+Write-Host "======================================="
 $errorCount = $audit._errors.Count
 if ($errorCount -gt 0) {
-    Write-Host "Completed with $errorCount section errors (see _errors in JSON)" -ForegroundColor Yellow
+    Write-Host "Section errors: $errorCount (see _errors in JSON)" -ForegroundColor Yellow
 } else {
     Write-Host "All sections completed successfully" -ForegroundColor Green
 }
-
 Write-Host "JSON data: $JsonFile"
 Write-Host "======================================="
-
-# Save JSON
-$audit | ConvertTo-Json -Depth 10 | Out-File $JsonFile -Encoding UTF8
